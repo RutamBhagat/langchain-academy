@@ -18,7 +18,7 @@ from langgraph.graph import END, MessagesState, START, StateGraph
 
 ### LLM
 
-llm = ChatOpenAI(model="gpt-4o", temperature=0)
+llm = ChatOpenAI(model=OPENAI_MODEL="gpt-4o-mini", temperature=0)
 
 ### Schema
 

@@ -12,7 +12,7 @@ from langchain_openai import ChatOpenAI
 
 from langgraph.graph import StateGraph, START, END
 
-llm = ChatOpenAI(model="gpt-4o", temperature=0)
+llm = ChatOpenAI(model=OPENAI_MODEL="gpt-4o-mini", temperature=0)
 
 
 class State(TypedDict):

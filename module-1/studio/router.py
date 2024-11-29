@@ -16,7 +16,7 @@ def multiply(a: int, b: int) -> int:
 
 
 # LLM with bound tool
-llm = ChatOpenAI(model=OPENAI_MODEL="gpt-4o-mini")
+llm = ChatOpenAI(model="gpt-4o-mini")
 llm_with_tools = llm.bind_tools([multiply])
 
 

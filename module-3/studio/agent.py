@@ -38,7 +38,7 @@ def divide(a: int, b: int) -> float:
 tools = [add, multiply, divide]
 
 # Define LLM with bound tools
-llm = ChatOpenAI(model=OPENAI_MODEL="gpt-4o-mini")
+llm = ChatOpenAI(model="gpt-4o-mini")
 llm_with_tools = llm.bind_tools(tools)
 
 # System message

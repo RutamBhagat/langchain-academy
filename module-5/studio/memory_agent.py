@@ -133,7 +133,7 @@ class UpdateMemory(TypedDict):
 
 
 # Initialize the model
-model = ChatOpenAI(model=OPENAI_MODEL="gpt-4o-mini", temperature=0)
+model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 ## Create the Trustcall extractors for updating the user profile and ToDo list
 profile_extractor = create_extractor(

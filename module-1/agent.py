@@ -1,15 +1,18 @@
 # %%
 import os
+import sympy
+import warnings
 from typing import Annotated
 from dotenv import load_dotenv
-from langgraph.graph import END, START, StateGraph
+from langgraph.graph import START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 from langchain.schema import HumanMessage
-import sympy
+
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
 
 # %%
@@ -74,7 +77,7 @@ def build_graph() -> StateGraph:
     # Add edges
     builder.add_edge(START, "tool_calling_llm")
     builder.add_conditional_edges("tool_calling_llm", tools_condition)
-    builder.add_edge("tools", END)
+    builder.add_edge("tools", "tool_calling_llm")
 
     return builder.compile()
 
@@ -96,7 +99,16 @@ graph = build_graph()
 save_graph_visualization(graph)
 
 # Example usage
-messages = [HumanMessage(content="What is 2 times 3?")]
+# messages = [HumanMessage(content="What is 2 times 3?")]
+messages = [
+    HumanMessage(
+        content="""A company has a tiered bonus system for its employees. The bonus is calculated as follows:
+                Tier 1: For sales between $10,000 and $20,000, employees earn a 5 percent bonus on the amount exceeding $10,000.
+                Tier 2: For sales between $20,001 and $50,000, employees earn the Tier 1 bonus, plus 8 percent of the amount exceeding $20,000.
+                Tier 3: For sales above $50,000, employees earn the Tier 1 and Tier 2 bonuses, plus 12 percent of the amount exceeding $50,000.
+                Calculate the total bonus for an employee with sales of $65,750."""
+    )
+]
 result = graph.invoke({"messages": messages})
 
 # Print results

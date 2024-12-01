@@ -1,69 +1,98 @@
-from langchain_core.messages import SystemMessage
+# %%
+import os
+import sympy
+import warnings
+from typing import Annotated
+from dotenv import load_dotenv
+from langgraph.graph import START, StateGraph
+from langgraph.prebuilt import ToolNode, tools_condition
+from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
+from langchain_core.messages import AnyMessage
+from langgraph.graph.message import add_messages
+from langchain.schema import HumanMessage
 
-from langgraph.graph import START, StateGraph, MessagesState
-from langgraph.prebuilt import tools_condition, ToolNode
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
 
-def add(a: int, b: int) -> int:
-    """Adds a and b.
+# %%
+def load_environment() -> None:
+    """Load environment variables into global namespace."""
+    load_dotenv()
+    for key, value in os.environ.items():
+        globals()[key] = value
+
+
+# %%
+def calculate(expression: str) -> float:
+    """
+    Safely evaluate a mathematical expression using sympy.
 
     Args:
-        a: first int
-        b: second int
+        expression: A string containing a mathematical expression (e.g., "2*3+2")
+
+    Returns:
+        Result of evaluating the expression
     """
-    return a + b
+    try:
+        # Convert string expression to sympy expression and evaluate
+        result = sympy.sympify(expression)
+        return float(result.evalf())
+    except (sympy.SympifyError, ValueError) as e:
+        return f"Error: Invalid expression - {str(e)}"
 
 
-def multiply(a: int, b: int) -> int:
-    """Multiplies a and b.
+# %%
+class MessagesState(BaseModel):
+    """State class for managing message flow in the graph."""
 
-    Args:
-        a: first int
-        b: second int
-    """
-    return a * b
-
-
-def divide(a: int, b: int) -> float:
-    """Divide a and b.
-
-    Args:
-        a: first int
-        b: second int
-    """
-    return a / b
+    messages: Annotated[list[AnyMessage], add_messages] = Field(
+        default_factory=list, description="List of messages in the conversation"
+    )
 
 
-tools = [add, multiply, divide]
-
-# Define LLM with bound tools
-llm = ChatOpenAI(model="gpt-4o-mini")
-llm_with_tools = llm.bind_tools(tools)
-
-# System message
-sys_msg = SystemMessage(
-    content="You are a helpful assistant tasked with writing performing arithmetic on a set of inputs."
-)
+# %%
+def setup_llm() -> ChatOpenAI:
+    """Initialize and configure LLM with tools."""
+    llm = ChatOpenAI(model=os.getenv("OPENAI_MODEL"))
+    return llm.bind_tools([calculate])
 
 
-# Node
-def assistant(state: MessagesState):
-    return {"messages": [llm_with_tools.invoke([sys_msg] + state["messages"])]}
+# %%
+def tool_calling_llm(state: MessagesState) -> MessagesState:
+    """Process messages through LLM with tool support."""
+    state.messages = llm_with_tools.invoke(state.messages)
+    return state
 
 
-# Build graph
-builder = StateGraph(MessagesState)
-builder.add_node("assistant", assistant)
-builder.add_node("tools", ToolNode(tools))
-builder.add_edge(START, "assistant")
-builder.add_conditional_edges(
-    "assistant",
-    # If the latest message (result) from assistant is a tool call -> tools_condition routes to tools
-    # If the latest message (result) from assistant is a not a tool call -> tools_condition routes to END
-    tools_condition,
-)
-builder.add_edge("tools", "assistant")
+# %%
+def build_graph() -> StateGraph:
+    """Construct and compile the message processing graph."""
+    builder = StateGraph(MessagesState)
 
-# Compile graph
-graph = builder.compile()
+    # Add nodes
+    builder.add_node("tool_calling_llm", tool_calling_llm)
+    builder.add_node("tools", ToolNode([calculate]))
+
+    # Add edges
+    builder.add_edge(START, "tool_calling_llm")
+    builder.add_conditional_edges("tool_calling_llm", tools_condition)
+    builder.add_edge("tools", "tool_calling_llm")
+
+    return builder.compile()
+
+
+# %%
+def save_graph_visualization(graph: StateGraph, filename: str = "graph.png") -> None:
+    """Save graph visualization to file."""
+    with open(filename, "wb") as f:
+        f.write(graph.get_graph().draw_mermaid_png())
+
+
+# %%
+# Initialize environment and LLM
+load_environment()
+llm_with_tools = setup_llm()
+
+# Build and save graph
+graph = build_graph()

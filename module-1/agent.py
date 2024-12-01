@@ -49,10 +49,11 @@ def calculate(expression: str) -> float:
 def get_default_messages() -> list[AnyMessage]:
     """Create default message list with system message."""
     sys_msg = SystemMessage(
-        content="""You are a helpful assistant tasked with performing arithmetic on a set of inputs. 
-        If there are any math operations break them down in smaller parts before using the calculate tool function, 
-        the calculator is primitive and can not handle multiple BODMOS operations all at once do one operation at a time 
-        for e.g. multiply in one step then based on the result add or substract etc."""
+        content="""You are a helpful assistant specialized in performing arithmetic operations. 
+        When presented with a mathematical expression, break it down into smaller, manageable parts before using the calculate tool function. 
+        The calculator can only handle one operation at a time, so perform each step sequentially. 
+        For example, handle multiplication first, then use the result for addition or subtraction, and so on. 
+        Ensure clarity and accuracy in your calculations."""
     )
     return [sys_msg]
 

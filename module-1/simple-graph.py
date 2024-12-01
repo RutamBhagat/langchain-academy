@@ -1,74 +1,90 @@
 # %%
-
 from random import random
-from typing import Literal
+from typing import Dict, Literal, Optional
 from pydantic import BaseModel, Field
-
 from langgraph.graph import END, START, StateGraph
 
 
 # %%
 class State(BaseModel):
-    graph_state: str = Field("", description="The state of the graph")
+    """Represents the state of the graph processing pipeline."""
+
+    graph_state: str = Field("", description="The current state of the graph")
 
 
 # %%
-
-
-def node_1(state: State):
+def node_1(state: State) -> Dict[str, str]:
+    """First node that appends 'I am' to the graph state."""
     print("___Node 1___")
-    return {"graph_state": state.graph_state + " I am"}
+    return {"graph_state": f"{state.graph_state} I am"}
 
 
-def node_2(state: State):
+def node_2(state: State) -> Dict[str, str]:
+    """Happy path node that appends positive sentiment."""
     print("___Node 2___")
-    return {"graph_state": state.graph_state + " happy!"}
+    return {"graph_state": f"{state.graph_state} happy!"}
 
 
-def node_3(state: State):
+def node_3(state: State) -> Dict[str, str]:
+    """Sad path node that appends negative sentiment."""
     print("___Node 3___")
-    return {"graph_state": state.graph_state + " sad!!!"}
+    return {"graph_state": f"{state.graph_state} sad!!!"}
 
 
 # %%
-
-
 def decide_mood(state: State) -> Literal["node_2", "node_3"]:
-    # we might do some logic based on the existing state like an llm call or something else
-    # then based on that decide which node to visit next
-    user_input = state.graph_state
+    """
+    Determines the next node based on random probability.
 
-    if random() < 0.5:
-        return "node_2"
-    return "node_3"
+    Args:
+        state: Current state of the graph
+
+    Returns:
+        Literal["node_2", "node_3"]: Next node to process
+    """
+    return "node_2" if random() < 0.5 else "node_3"
 
 
 # %%
+def build_and_save_graph() -> StateGraph:
+    """
+    Builds the graph and saves its visualization.
 
-# Build Graph
-builder = StateGraph(State)
-builder.add_node("node_1", node_1)
-builder.add_node("node_2", node_2)
-builder.add_node("node_3", node_3)
+    Returns:
+        StateGraph: Compiled graph instance
+    """
+    # Build Graph
+    builder = StateGraph(State)
 
-# Logic
-builder.add_edge(START, "node_1")
-builder.add_conditional_edges(
-    "node_1", decide_mood, path_map={"node_2": "node_2", "node_3": "node_3"}
-)
-builder.add_edge("node_2", END)
-builder.add_edge("node_3", END)
+    # Add nodes
+    for node_name, node_func in [
+        ("node_1", node_1),
+        ("node_2", node_2),
+        ("node_3", node_3),
+    ]:
+        builder.add_node(node_name, node_func)
 
-# Add
-graph = builder.compile()
+    # Add edges
+    builder.add_edge(START, "node_1")
+    builder.add_conditional_edges(
+        "node_1", decide_mood, path_map={"node_2": "node_2", "node_3": "node_3"}
+    )
+    builder.add_edge("node_2", END)
+    builder.add_edge("node_3", END)
 
-# Get the graph in PNG format
-graph_png = graph.get_graph().draw_mermaid_png()
+    # Compile graph
+    graph = builder.compile()
 
-# Save the PNG to a file in the current directory
-with open("graph.png", "wb") as f:
-    f.write(graph_png)
+    # Save visualization
+    with open("graph.png", "wb") as f:
+        f.write(graph.get_graph().draw_mermaid_png())
+
+    return graph
+
+
 # %%
+# Create and run graph
+graph = build_and_save_graph()
 graph.invoke({"graph_state": "Hi, this is Rutam."})
 
 # %%

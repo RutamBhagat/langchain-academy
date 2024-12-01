@@ -63,7 +63,7 @@ def setup_llm() -> ChatOpenAI:
 
 
 # %%
-def tool_calling_llm(state: MessagesState) -> MessagesState:
+def assistant(state: MessagesState) -> MessagesState:
     """Process messages through LLM with tool support."""
     # System message
     # This is not optimal but we are doing this for demonstrating ReAct example
@@ -84,13 +84,13 @@ def build_graph() -> StateGraph:
     builder = StateGraph(MessagesState)
 
     # Add nodes
-    builder.add_node("tool_calling_llm", tool_calling_llm)
+    builder.add_node("assistant", assistant)
     builder.add_node("tools", ToolNode([calculate]))
 
     # Add edges
-    builder.add_edge(START, "tool_calling_llm")
-    builder.add_conditional_edges("tool_calling_llm", tools_condition)
-    builder.add_edge("tools", "tool_calling_llm")
+    builder.add_edge(START, "assistant")
+    builder.add_conditional_edges("assistant", tools_condition)
+    builder.add_edge("tools", "assistant")
 
     return builder.compile()
 

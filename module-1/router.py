@@ -9,6 +9,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 from langchain.schema import HumanMessage
+import sympy
 
 
 # %%
@@ -20,18 +21,21 @@ def load_environment() -> None:
 
 
 # %%
-def multiply(a: int, b: int) -> int:
+def calculate(expression: str) -> float:
     """
-    Multiply two integers.
+    Safely evaluate a mathematical expression using sympy.
 
     Args:
-        a: First integer
-        b: Second integer
+        expression: A string containing a mathematical expression (e.g., "2*3+2")
 
     Returns:
-        Product of a and b
+        Result of evaluating the expression
     """
-    return a * b
+    try:
+        result = sympy.sympify(expression)
+        return float(result.evalf())
+    except (sympy.SympifyError, ValueError) as e:
+        return f"Error: Invalid expression - {str(e)}"
 
 
 # %%
@@ -47,7 +51,7 @@ class MessagesState(BaseModel):
 def setup_llm() -> ChatOpenAI:
     """Initialize and configure LLM with tools."""
     llm = ChatOpenAI(model=os.getenv("OPENAI_MODEL"))
-    return llm.bind_tools([multiply])
+    return llm.bind_tools([calculate])
 
 
 # %%
@@ -64,7 +68,7 @@ def build_graph() -> StateGraph:
 
     # Add nodes
     builder.add_node("tool_calling_llm", tool_calling_llm)
-    builder.add_node("tools", ToolNode([multiply]))
+    builder.add_node("tools", ToolNode([calculate]))
 
     # Add edges
     builder.add_edge(START, "tool_calling_llm")

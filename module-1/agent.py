@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
+from langchain.schema import HumanMessage
 import sympy
 
 
@@ -31,6 +32,7 @@ def calculate(expression: str) -> float:
         Result of evaluating the expression
     """
     try:
+        # Convert string expression to sympy expression and evaluate
         result = sympy.sympify(expression)
         return float(result.evalf())
     except (sympy.SympifyError, ValueError) as e:
@@ -78,9 +80,27 @@ def build_graph() -> StateGraph:
 
 
 # %%
+def save_graph_visualization(graph: StateGraph, filename: str = "graph.png") -> None:
+    """Save graph visualization to file."""
+    with open(filename, "wb") as f:
+        f.write(graph.get_graph().draw_mermaid_png())
+
+
+# %%
 # Initialize environment and LLM
 load_environment()
 llm_with_tools = setup_llm()
 
 # Build and save graph
 graph = build_graph()
+save_graph_visualization(graph)
+
+# Example usage
+messages = [HumanMessage(content="What is 2 times 3?")]
+result = graph.invoke({"messages": messages})
+
+# Print results
+for message in result.get("messages", []):
+    message.pretty_print()
+
+# %%

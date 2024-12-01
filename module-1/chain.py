@@ -5,6 +5,7 @@ import json
 from pprint import pprint
 from typing import Annotated
 from dotenv import load_dotenv
+from langgraph.graph import END, START, MessagesState, StateGraph
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AnyMessage
@@ -73,3 +74,80 @@ class MessagesState(BaseModel):
     messages: Annotated[list[AnyMessage], add_messages] = Field(
         [], description="List of messages"
     )
+
+
+# %%
+
+# Initial state
+initial_messages = [
+    AIMessage(content="Hello, how can I help you?", name="Model"),
+    HumanMessage(
+        content="I am looking for information on Arcan divine forbidden magic and dark arts",
+        name="Rutam",
+    ),
+]
+
+new_message = AIMessage(
+    content="Sure I can help you with that. What specifically are you interested in?",
+    name="Model",
+)
+
+add_messages(initial_messages, new_message)
+
+
+# %%
+class State(MessagesState):
+    # messages key is prebuilt in MessagesState with add_messages annotation
+    # add any additional keys here
+    pass
+
+
+# %%
+# Node
+def tool_calling_llm(state: MessagesState):
+    state.messages = llm_with_tools.invoke(state.messages)
+    return state
+
+
+# %%
+# Build Graph
+builder = StateGraph(State)
+
+# Add nodes
+builder.add_node("tool_calling_llm", tool_calling_llm)
+
+# Add edges
+builder.add_edge(START, "tool_calling_llm")
+builder.add_edge("tool_calling_llm", END)
+
+# compile graph
+graph = builder.compile()
+
+# %%
+# Get the graph in PNG format
+graph_png = graph.get_graph().draw_mermaid_png()
+
+# Save the PNG to a file in the current directory
+with open("graph.png", "wb") as f:
+    f.write(graph_png)
+
+# %%
+
+messages = graph.invoke({"messages": initial_messages})
+
+# %%
+print(messages.get("messages", [])[-1].content)
+# %%
+messages = graph.invoke(
+    {"messages": HumanMessage(content="What is 10 multiplied by 20")}
+)
+# %%
+messages
+# %%
+print(
+    json.dumps(
+        messages.get("messages", [])[-1].additional_kwargs.get("tool_calls", []),
+        indent=2,
+    ).replace("\\", "")
+)
+# %%

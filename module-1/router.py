@@ -79,4 +79,7 @@ with open("graph.png", "wb") as f:
 messages = [HumanMessage(content="What is 2 times 3?")]
 messages = graph.invoke({"messages": messages})
 # %%
-print(messages.get("messages", [])[-1].content)
+for message in messages.get("messages", []):
+    message.pretty_print()
+
+# %%

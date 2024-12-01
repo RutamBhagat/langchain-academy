@@ -62,11 +62,12 @@ tool_call = llm_with_tools.invoke(
 # %%
 tool_call
 # %%
-print(
-    json.dumps(tool_call.additional_kwargs.get("tool_calls", []), indent=2).replace(
-        "\\", ""
-    )
-)
+# print(
+#     json.dumps(tool_call.additional_kwargs.get("tool_calls", []), indent=2).replace(
+#         "\\", ""
+#     )
+# )
+tool_call.pretty_print()
 
 
 # %%
@@ -144,10 +145,6 @@ messages = graph.invoke(
 # %%
 messages
 # %%
-print(
-    json.dumps(
-        messages.get("messages", [])[-1].additional_kwargs.get("tool_calls", []),
-        indent=2,
-    ).replace("\\", "")
-)
+for message in messages.get("messages", []):
+    message.pretty_print()
 # %%

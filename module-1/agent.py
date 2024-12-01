@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
-from langchain.schema import HumanMessage
+from langchain.schema import HumanMessage, SystemMessage
 
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
@@ -55,13 +55,22 @@ class MessagesState(BaseModel):
 def setup_llm() -> ChatOpenAI:
     """Initialize and configure LLM with tools."""
     llm = ChatOpenAI(model=os.getenv("OPENAI_MODEL"))
-    return llm.bind_tools([calculate])
+    # For this ipynb we set parallel tool calling to false as math generally is done sequentially, and this time we have 3 tools that can do math
+    # the OpenAI model specifically defaults to parallel tool calling for efficiency, see https://python.langchain.com/docs/how_to/tool_calling_parallel/
+    # play around with it and see how the model behaves with math equations!
+    llm_with_tools = llm.bind_tools([calculate], parallel_tool_calls=False)
+    return llm_with_tools
 
 
 # %%
 def tool_calling_llm(state: MessagesState) -> MessagesState:
     """Process messages through LLM with tool support."""
-    state.messages = llm_with_tools.invoke(state.messages)
+    # System message
+    sys_msg = SystemMessage(
+        content="You are a helpful assistant tasked with performing arithmetic on a set of inputs. If there are any math operations break them down in smaller parts before using the calculate tool function, the calculator is primitive and can not handle multiple BODMOS operations all at once do one operation at a time for e.g. multiply in one step then based on the result add or substract etc."
+    )
+
+    state.messages = llm_with_tools.invoke([sys_msg] + state.messages)
     return state
 
 

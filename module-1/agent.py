@@ -65,7 +65,8 @@ def setup_llm() -> ChatOpenAI:
 # %%
 def tool_calling_llm(state: MessagesState) -> MessagesState:
     """Process messages through LLM with tool support."""
-    # System message
+    # System
+    # This is not optimal but we are doing this for demonstrating ReAct example
     sys_msg = SystemMessage(
         content="""You are a helpful assistant tasked with performing arithmetic on a set of inputs. 
         If there are any math operations break them down in smaller parts before using the calculate tool function, 

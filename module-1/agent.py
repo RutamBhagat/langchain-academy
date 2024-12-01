@@ -67,7 +67,10 @@ def tool_calling_llm(state: MessagesState) -> MessagesState:
     """Process messages through LLM with tool support."""
     # System message
     sys_msg = SystemMessage(
-        content="You are a helpful assistant tasked with performing arithmetic on a set of inputs. If there are any math operations break them down in smaller parts before using the calculate tool function, the calculator is primitive and can not handle multiple BODMOS operations all at once do one operation at a time for e.g. multiply in one step then based on the result add or substract etc."
+        content="""You are a helpful assistant tasked with performing arithmetic on a set of inputs. 
+        If there are any math operations break them down in smaller parts before using the calculate tool function, 
+        the calculator is primitive and can not handle multiple BODMOS operations all at once do one operation at a time 
+        for e.g. multiply in one step then based on the result add or substract etc."""
     )
 
     state.messages = llm_with_tools.invoke([sys_msg] + state.messages)

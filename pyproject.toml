@@ -10,7 +10,7 @@ dependencies = [
     "langchain-openai>=0.2.10",
     "langgraph>=0.2.53",
     "langgraph-checkpoint-sqlite>=2.0.1",
-    "langgraph-cli[inmem]==0.1.55",
+    "langgraph-cli[inmem]==0.1.61",
     "langgraph-sdk>=0.1.40",
     "langsmith>=0.1.147",
     "notebook>=7.2.2",

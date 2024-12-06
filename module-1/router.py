@@ -1,5 +1,6 @@
 # %%
 import os
+import sympy
 from typing import Annotated
 from dotenv import load_dotenv
 from langgraph.graph import END, START, StateGraph
@@ -9,7 +10,6 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 from langchain.schema import HumanMessage
-import sympy
 
 
 # %%
@@ -57,8 +57,7 @@ def setup_llm() -> ChatOpenAI:
 # %%
 def tool_calling_llm(state: MessagesState) -> MessagesState:
     """Process messages through LLM with tool support."""
-    state.messages = llm_with_tools.invoke(state.messages)
-    return state
+    return {"messages": llm_with_tools.invoke(state.messages)}
 
 
 # %%

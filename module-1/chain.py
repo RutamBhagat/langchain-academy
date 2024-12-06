@@ -43,8 +43,7 @@ class State(MessagesState):
 # %%
 def tool_calling_llm(state: MessagesState) -> MessagesState:
     """Node function that processes messages through LLM with tools."""
-    state.messages = llm_with_tools.invoke(state.messages)
-    return state
+    return {"messages": llm_with_tools.invoke(state.messages)}
 
 
 # %%

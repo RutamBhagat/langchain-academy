@@ -1,6 +1,6 @@
 # %%
 from random import random
-from typing import Dict, Literal, Optional
+from typing import Dict, Literal
 from pydantic import BaseModel, Field
 from langgraph.graph import END, START, StateGraph
 
@@ -57,12 +57,9 @@ def build_and_save_graph() -> StateGraph:
     builder = StateGraph(State)
 
     # Add nodes
-    for node_name, node_func in [
-        ("node_1", node_1),
-        ("node_2", node_2),
-        ("node_3", node_3),
-    ]:
-        builder.add_node(node_name, node_func)
+    builder.add_node("node_1", node_1)
+    builder.add_node("node_2", node_2)
+    builder.add_node("node_3", node_3)
 
     # Add edges
     builder.add_edge(START, "node_1")

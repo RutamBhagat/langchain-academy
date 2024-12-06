@@ -76,8 +76,7 @@ def setup_llm() -> ChatOpenAI:
 # %%
 def assistant(state: MessagesState) -> MessagesState:
     """Process messages through LLM with tool support."""
-    state.messages = llm_with_tools.invoke(state.messages)
-    return state
+    return {"messages": llm_with_tools.invoke(state.messages)}
 
 
 # %%

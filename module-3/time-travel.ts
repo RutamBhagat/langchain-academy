@@ -1,19 +1,10 @@
-// // breakpoints.ts
+// // time-travel.ts
 
-// // Markdown comments are not directly translated to TypeScript,
-// // but we'll use regular comments to explain the code.
-
-// // # Breakpoints
+// // # Time travel
 
 // // ## Review
 
-// // For `human-in-the-loop`, we often want to see our graph outputs as its running.
-
-// // We laid the foundations for this with streaming.
-
-// // ## Goals
-
-// // Now, let's talk about the motivations for `human-in-the-loop`:
+// // We discussed motivations for human-in-the-loop:
 
 // // (1) `Approval` - We can interrupt our agent, surface state to a user, and allow the user to accept an action
 
@@ -21,19 +12,18 @@
 
 // // (3) `Editing` - You can modify the state
 
-// // LangGraph offers several ways to get or update agent state to support various `human-in-the-loop` workflows.
+// // We showed how breakpoints can stop the graph at specific nodes or allow the graph to dynamically interrupt itself.
 
-// // First, we'll introduce [breakpoints](https://langchain-ai.github.io/langgraph/how-tos/human_in_the_loop/breakpoints/#simple-usage), which provide a simple way to stop the graph at specific steps.
+// // Then we showed how to proceed with human approval or directly edit the graph state with human feedback.
 
-// // We'll show how this enables user `approval`.
+// // ## Goals
 
-// // Note: Unlike Python's %pip, we'll assume necessary packages are installed via npm or yarn.
-// // npm install @langchain/langgraph @langchain/openai @langchain/core @langchain/community
+// // Now, let's show how LangGraph [supports debugging](https://langchain-ai.github.io/langgraph/how-tos/human_in_the_loop/time-travel/) by viewing, re-playing, and even forking from past states.
+
+// // We call this `time travel`.
 
 // // In TypeScript, we typically use environment variables directly or a .env file with a library like dotenv.
 // import "dotenv/config"; // If using dotenv for environment variables
-
-// import * as readline from "readline";
 
 // import {
 //   AIMessage,
@@ -56,7 +46,6 @@
 //   ToolExecutor,
 //   formatToOpenAIFunction,
 // } from "@langchain/core/utils/function_calling";
-// import { stdin, stdout } from "process";
 
 // import { ChatOpenAI } from "@langchain/openai";
 // import { DynamicStructuredTool } from "@langchain/core/tools";
@@ -73,16 +62,7 @@
 
 // const OPENAI_API_KEY = getEnvironmentVariable("OPENAI_API_KEY");
 
-// // ## Breakpoints for human approval
-
-// // Let's re-consider the simple agent that we worked with in Module 1.
-
-// // Let's assume that are concerned about tool use: we want to approve the agent to use any of its tools.
-
-// // All we need to do is simply compile the graph with `interrupt_before=["tools"]` where `tools` is our tools node.
-
-// // This means that the execution will be interrupted before the node `tools`, which executes the tool call.
-
+// // Let's build our agent.
 // function multiply(args: { a: number; b: number }) {
 //   return args.a * args.b;
 // }
@@ -151,6 +131,7 @@
 //   >;
 // }
 // const state: Schema = {
+//   //same as before
 //   type: "object",
 //   properties: {
 //     messages: {
@@ -446,9 +427,9 @@
 // builder.addConditionalEdges("assistant", tools_condition);
 // builder.addEdge("tools", "assistant");
 
-// const graph = builder.compile({
-//   interrupt_before: ["tools"],
-// });
+// const graph = builder.compile();
+
+// // Let's run it, as before.
 
 // // Input
 // const initialInput = { messages: [new HumanMessage("Multiply 2 and 3")] };
@@ -456,8 +437,7 @@
 // // Thread
 // const threadConfig = { configurable: { thread_id: "1" } };
 
-// // Run the graph until the first interruption
-// async function runUntilFirstInterruption() {
+// async function runAgent() {
 //   const events = await graph.stream(initialInput, threadConfig);
 //   for await (const event of events) {
 //     if (event.has("messages")) {
@@ -466,99 +446,116 @@
 //   }
 // }
 
-// runUntilFirstInterruption();
+// runAgent();
 
-// // We can get the state and look at the next node to call.
+// // ## Browsing History
 
-// // This is a nice way to see that the graph has been interrupted.
+// // We can use `get_state` to look at the **current** state of our graph, given the `thread_id`!
 
-// async function printNextNode() {
+// async function getCurrentState() {
 //   const events = await graph.stream(initialInput, threadConfig);
 //   for await (const event of events) {
 //     //ignore
 //   }
-//   const next = graph.next(threadConfig);
-//   console.log(next);
+//   console.log(graph.get_state(threadConfig));
 // }
 
-// printNextNode();
+// getCurrentState();
 
-// // Now, we'll introduce a nice trick.
+// // We can also browse the state history of our agent.
 
-// // When we invoke the graph with `None`, it will just continue from the last state checkpoint!
+// // `get_state_history` lets us get the state at all prior steps.
 
-// // ![breakpoints.jpg](https://cdn.prod.website-files.com/65b8cd72835ceeacd4449a53/66dbae7985b747dfed67775d_breakpoints1.png)
-
-// // For clarity, LangGraph will re-emit the current state, which contains the `AIMessage` with tool call.
-
-// // And then it will proceed to execute the following steps in the graph, which start with the tool node.
-
-// // We see that the tool node is run with this tool call, and it's passed back to the chat model for our final answer.
-
-// async function continueFromLastCheckpoint() {
+// async function getStateHistory() {
 //   const events = await graph.stream(initialInput, threadConfig);
 //   for await (const event of events) {
 //     //ignore
 //   }
-//   const nextEvents = await graph.stream(null, threadConfig);
-//   for await (const nextEvent of nextEvents) {
-//     if (nextEvent.has("messages")) {
-//       console.log(nextEvent.get("messages"));
-//     }
-//   }
+
+//   console.log(graph.get_state_history(threadConfig));
 // }
 
-// continueFromLastCheckpoint();
+// getStateHistory();
 
-// // Now, lets bring these together with a specific user approval step that accepts user input.
+// // The first element is the current state, just as we got from `get_state`.
+// //Managed in the previous function
 
-// function askUserApproval(): Promise<string> {
-//   const rl = readline.createInterface({
-//     input: stdin,
-//     output: stdout,
-//   });
+// // Everything above we can visualize here:
 
-//   return new Promise((resolve) => {
-//     rl.question("Do you want to call the tool? (yes/no): ", (answer) => {
-//       rl.close();
-//       resolve(answer);
-//     });
-//   });
-// }
+// // ![fig1.jpg](https://cdn.prod.website-files.com/65b8cd72835ceeacd4449a53/66dbb038211b544898570be3_time-travel1.png)
 
-// async function runWithUserApproval() {
-//   // Run the graph until the first interruption
-//   const events = await graph.stream(initialInput, {
-//     configurable: { thread_id: "2" },
-//   });
+// // ## Replaying
+
+// // We can re-run our agent from any of the prior steps.
+
+// // ![fig2.jpg](https://cdn.prod.website-files.com/65b8cd72835ceeacd4449a53/66dbb038a0bd34b541c78fb8_time-travel2.png)
+
+// // Let's look back at the step that recieved human input!
+
+// async function replayFromStep() {
+//   const events = await graph.stream(initialInput, threadConfig);
 //   for await (const event of events) {
-//     if (event.has("messages")) {
-//       console.log(event.get("messages"));
-//     }
+//     //ignore
 //   }
-
-//   // Get user feedback
-//   const userApproval = await askUserApproval();
-
-//   // Check approval
-//   if (userApproval.toLowerCase() === "yes") {
-//     // If approved, continue the graph execution
-//     const newEvents = await graph.stream(null, {
-//       configurable: { thread_id: "2" },
-//     });
-//     for await (const newEvent of newEvents) {
-//       if (newEvent.has("messages")) {
-//         console.log(newEvent.get("messages"));
+//   const history = graph.get_state_history(threadConfig);
+//   for await (const replayState of history) {
+//     if (replayState.values && replayState.values.messages) {
+//       //check the values are what we expect
+//       console.log(replayState);
+//       const newEvents = await graph.stream(null, replayState.config);
+//       for await (const newEvent of newEvents) {
+//         console.log(newEvent);
 //       }
+//       break; //only the first one that satisfies the condition
 //     }
-//   } else {
-//     console.log("Operation cancelled by user.");
 //   }
 // }
 
-// runWithUserApproval();
+// replayFromStep();
 
-// // ### Breakpoints with LangGraph API
+// // Now, we can see our current state after the agent re-ran.
+// //Managed in the previous function
+
+// // ## Forking
+
+// // What if we want to run from that same step, but with a different input.
+
+// // This is forking.
+
+// // ![fig3.jpg](https://cdn.prod.website-files.com/65b8cd72835ceeacd4449a53/66dbb038f89f2d847ee5c336_time-travel3.png)
+
+// async function forkingFromStep() {
+//   const events = await graph.stream(initialInput, threadConfig);
+//   for await (const event of events) {
+//     //ignore
+//   }
+//   const history = graph.get_state_history(threadConfig);
+//   for await (const forkState of history) {
+//     if (forkState.values && forkState.values.messages) {
+//       //check the values are what we expect
+//       console.log("Fork config:", forkState.config);
+//       console.log("Fork state:", forkState.values);
+//       const updatedMessage = new HumanMessage("Multiply 5 and 3");
+//       updatedMessage.id = forkState.values.messages[0].id;
+//       const forkConfig = graph.update_state(forkState.config, {
+//         messages: [updatedMessage],
+//       });
+//       console.log("New fork config:", forkConfig);
+//       const newEvents = await graph.stream(null, forkConfig);
+//       for await (const newEvent of newEvents) {
+//         console.log(newEvent);
+//       }
+//       break; //only the first one that satisfies the condition
+//     }
+//   }
+// }
+
+// forkingFromStep();
+
+// // Now, we can see the current state is the end of our agent run.
+// //Managed in the previous function
+
+// // ### Time travel with LangGraph API
 
 // // --
 
@@ -572,76 +569,158 @@
 
 // // Let's load our `agent` in the Studio UI, which uses `module-3/studio/agent.py` set in `module-3/studio/langgraph.json`.
 
-// // Let's get the URL for the local deployment from Studio.
+// // ![Screenshot 2024-08-26 at 9.59.19 AM.png](https://cdn.prod.website-files.com/65b8cd72835ceeacd4449a53/66dbb038211b544898570bec_time-travel4.png)
 
-// // ![Screenshot 2024-08-26 at 9.36.41 AM.png](https://cdn.prod.website-files.com/65b8cd72835ceeacd4449a53/66dbae7989b1d60204c199dc_breakpoints2.png)
-
-// // The LangGraph API [supports breakpoints](https://langchain-ai.github.io/langgraph/cloud/how-tos/human_in_the_loop_breakpoint/#sdk-initialization).
+// // We connect to it via the SDK and show how the LangGraph API [supports time travel](https://langchain-ai.github.io/langgraph/cloud/how-tos/human_in_the_loop_time_travel/#initial-invocation).
 
 // // Note: Skipping platform check as it's not relevant for TypeScript execution environment.
-
 // const client = new LangGraphClient({
 //   url: "http://localhost:8000", // Replace with your actual URL
 // });
 
-// // As shown above, we can add `interrupt_before=["node"]` when compiling the graph that is running in Studio.
+// // #### Re-playing
 
-// // However, with the API, you can also pass `interrupt_before` to the stream method directly.
+// // Let's run our agent streaming `updates` to the state of the graph after each node is called.
 
-// async function runWithInterruptionAPI() {
+// async function replayWithAPI() {
 //   const initialInput = { messages: [new HumanMessage("Multiply 2 and 3")] };
 //   const thread: Thread = await client.threads.create();
+
 //   const stream = await client.runs.stream(thread.thread_id, "agent", {
+//     //check agent id
 //     input: initialInput,
-//     stream_mode: "values",
-//     interrupt_before: ["tools"],
+//     stream_mode: "updates",
 //   });
 
 //   for await (const chunk of stream) {
-//     console.log(`Receiving new event of type: ${chunk.event}...`);
-//     const messages = chunk.data.messages || [];
-//     if (messages.length > 0) {
-//       console.log(messages[messages.length - 1]);
+//     if (chunk.data) {
+//       const assistantNode = chunk.data.assistant?.messages || [];
+//       const toolsNode = chunk.data.tools?.messages || [];
+//       if (assistantNode.length > 0) {
+//         console.log("-".repeat(20) + "Assistant Node" + "-".repeat(20));
+//         console.log(assistantNode.slice(-1)[0]);
+//       } else if (toolsNode.length > 0) {
+//         console.log("-".repeat(20) + "Tools Node" + "-".repeat(20));
+//         console.log(toolsNode.slice(-1)[0]);
+//       }
 //     }
-//     console.log("-".repeat(50));
 //   }
-// }
 
-// runWithInterruptionAPI();
+//   // Now, let's look at **replaying** from a specified checkpoint.
+//   // We simply need to pass the `checkpoint_id`.
+//   const states = await client.threads.getHistory(thread.thread_id);
+//   const toReplay = states.slice(-2)[0];
+//   console.log("To replay:", toReplay);
 
-// // Now, we can proceed from the breakpoint just like we did before by passing the `thread_id` and `None` as the input!
-
-// async function continueFromBreakpointAPI() {
-//   const initialInput = { messages: [new HumanMessage("Multiply 2 and 3")] };
-//   const thread: Thread = await client.threads.create();
-//   const stream = await client.runs.stream(thread.thread_id, "agent", {
-//     input: initialInput,
-//     stream_mode: "values",
-//     interrupt_before: ["tools"],
-//   });
-
-//   for await (const chunk of stream) {
-//     console.log(`Receiving new event of type: ${chunk.event}...`);
-//     const messages = chunk.data.messages || [];
-//     if (messages.length > 0) {
-//       console.log(messages[messages.length - 1]);
-//     }
-//     console.log("-".repeat(50));
-//   }
-//   const newStream = await client.runs.stream(thread.thread_id, "agent", {
+//   // Let's stream with `stream_mode="values"` to see the full state at every node as we replay.
+//   const replayStream = await client.runs.stream(thread.thread_id, "agent", {
+//     //check agent id
 //     input: null,
 //     stream_mode: "values",
-//     interrupt_before: ["tools"],
+//     checkpoint_id: toReplay.checkpoint_id,
+//   });
+//   for await (const chunk of replayStream) {
+//     console.log(`Receiving new event of type: ${chunk.event}...`);
+//     console.log(chunk.data);
+//     console.log("\n\n");
+//   }
+
+//   // We can all view this as streaming only `updates` to state made by the nodes that we reply.
+//   const updatesStream = await client.runs.stream(thread.thread_id, "agent", {
+//     //check agent id
+//     input: null,
+//     stream_mode: "updates",
+//     checkpoint_id: toReplay.checkpoint_id,
 //   });
 
-//   for await (const newChunk of newStream) {
-//     console.log(`Receiving new event of type: ${newChunk.event}...`);
-//     const newMessages = newChunk.data.messages || [];
-//     if (newMessages.length > 0) {
-//       console.log(newMessages[newMessages.length - 1]);
+//   for await (const chunk of updatesStream) {
+//     if (chunk.data) {
+//       const assistantNode = chunk.data.assistant?.messages || [];
+//       const toolsNode = chunk.data.tools?.messages || [];
+//       if (assistantNode.length > 0) {
+//         console.log("-".repeat(20) + "Assistant Node" + "-".repeat(20));
+//         console.log(assistantNode.slice(-1)[0]);
+//       } else if (toolsNode.length > 0) {
+//         console.log("-".repeat(20) + "Tools Node" + "-".repeat(20));
+//         console.log(toolsNode.slice(-1)[0]);
+//       }
 //     }
-//     console.log("-".repeat(50));
+//   }
+
+//   // #### Forking
+//   // Now, let's look at forking.
+//   // Let's get the same step as we worked with above, the human input.
+//   // Let's create a new thread with our agent.
+//   const initialInputFork = { messages: [new HumanMessage("Multiply 2 and 3")] };
+//   const threadFork: Thread = await client.threads.create();
+//   const streamFork = await client.runs.stream(threadFork.thread_id, "agent", {
+//     //check agent id
+//     input: initialInputFork,
+//     stream_mode: "updates",
+//   });
+
+//   for await (const chunk of streamFork) {
+//     if (chunk.data) {
+//       const assistantNode = chunk.data.assistant?.messages || [];
+//       const toolsNode = chunk.data.tools?.messages || [];
+//       if (assistantNode.length > 0) {
+//         console.log("-".repeat(20) + "Assistant Node" + "-".repeat(20));
+//         console.log(assistantNode.slice(-1)[0]);
+//       } else if (toolsNode.length > 0) {
+//         console.log("-".repeat(20) + "Tools Node" + "-".repeat(20));
+//         console.log(toolsNode.slice(-1)[0]);
+//       }
+//     }
+//   }
+
+//   const statesFork = await client.threads.getHistory(threadFork.thread_id);
+//   const toFork = statesFork.slice(-2)[0];
+//   console.log("To Fork values:", toFork.values);
+
+//   const forkedInput = {
+//     messages: [
+//       new HumanMessage({
+//         content: "Multiply 3 and 3",
+//         id: toFork["values"]["messages"][0]["id"], //using any to avoid type errors
+//       }),
+//     ],
+//   };
+
+//   const forkedConfig = await client.threads.update_state(
+//     threadFork.thread_id,
+//     forkedInput,
+//     { checkpoint_id: toFork.checkpoint_id }
+//   );
+
+//   console.log("Forked config:", forkedConfig);
+//   const statesForked = await client.threads.getHistory(threadFork.thread_id);
+//   console.log("States forked:", statesForked[0]);
+
+//   // To rerun, we pass in the `checkpoint_id`.
+//   const rerunStream = await client.runs.stream(threadFork.thread_id, "agent", {
+//     //check agent id
+//     input: null,
+//     stream_mode: "updates",
+//     checkpoint_id: forkedConfig.checkpoint_id,
+//   });
+
+//   for await (const chunk of rerunStream) {
+//     if (chunk.data) {
+//       const assistantNode = chunk.data.assistant?.messages || [];
+//       const toolsNode = chunk.data.tools?.messages || [];
+//       if (assistantNode.length > 0) {
+//         console.log("-".repeat(20) + "Assistant Node" + "-".repeat(20));
+//         console.log(assistantNode.slice(-1)[0]);
+//       } else if (toolsNode.length > 0) {
+//         console.log("-".repeat(20) + "Tools Node" + "-".repeat(20));
+//         console.log(toolsNode.slice(-1)[0]);
+//       }
+//     }
 //   }
 // }
 
-// continueFromBreakpointAPI();
+// replayWithAPI();
+
+// // ### LangGraph Studio
+
+// // Let's look at forking in the Studio UI with our `agent`, which uses `module-1/studio/agent.py` set in `module-1/studio/langgraph.json`.

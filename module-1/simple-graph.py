@@ -74,7 +74,7 @@ def build_and_save_graph() -> StateGraph:
 
     # Save visualization
     with open("graph.png", "wb") as f:
-        f.write(graph.get_graph().draw_mermaid_png())
+        f.write(graph.get_graph(xray=True).draw_mermaid_png())
 
     return graph
 

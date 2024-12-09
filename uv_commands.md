@@ -62,6 +62,14 @@ uv add --dev package_name
 
 ---
 
+## Running Langgraph
+
+```bash
+uv run langgraph dev --host localhost --port 8000
+```
+
+---
+
 ## Running Tests
 
 To run your tests using pytest:

@@ -60,7 +60,7 @@ def build_graph() -> StateGraph:
 def save_graph_visualization(graph: StateGraph, filename: str = "graph.png") -> None:
     """Saves graph visualization as PNG."""
     with open(filename, "wb") as f:
-        f.write(graph.get_graph().draw_mermaid_png())
+        f.write(graph.get_graph(xray=True).draw_mermaid_png())
 
 
 # %%

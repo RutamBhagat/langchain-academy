@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from langchain_core.runnables import RunnableConfig
 
+
 @dataclass(kw_only=True)
 class Configuration:
     """The configurable fields for the chatbot."""

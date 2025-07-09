@@ -1,12 +1,17 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.graph import MessagesState
+# %%
+from dotenv import load_dotenv
+from IPython.display import Image, display
 from langgraph.graph import StateGraph, START, END
-from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.graph import MessagesState
+from langgraph.prebuilt import ToolNode
+from langgraph.prebuilt import tools_condition
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage
 
-
-# Tool
+load_dotenv()
+# %%
 def multiply(a: int, b: int) -> int:
-    """Multiplies a and b.
+    """Multiply a and b.
 
     Args:
         a: first int
@@ -33,12 +38,9 @@ def calculate_sympy(expression: str) -> int:
 
     return float(result)
 
-
-# LLM with bound tool
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite-preview-06-17")
 llm_with_tools = llm.bind_tools([multiply, calculate_sympy])
-
-
+# %%
 # Node
 def tool_calling_llm(state: MessagesState):
     return {"messages": [llm_with_tools.invoke(state["messages"])]}
@@ -56,6 +58,16 @@ builder.add_conditional_edges(
     tools_condition,
 )
 builder.add_edge("tools", END)
-
-# Compile graph
 graph = builder.compile()
+
+# View
+display(Image(graph.get_graph().draw_mermaid_png()))
+# %%
+messages = [
+    HumanMessage(
+        content="What is 2 multiplied by 3 divided by 3.5 multiplied by 4 square multiplied by square root of 2")
+]
+messages = graph.invoke({"messages": messages})
+for m in messages["messages"]:
+    m.pretty_print()
+# %%

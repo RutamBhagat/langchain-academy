@@ -6,7 +6,7 @@ from langchain_openai import ChatOpenAI
 
 load_dotenv()
 # %%
-# We are using a reverse proxy for the OpenAI API. 
+# We are using a reverse proxy for the OpenAI API.
 # Just put a dummy value for the API key in the .env file.
 # No need to specify base_url here!
 # Langchain automatically reads OPENAI_API_BASE from the environment.
@@ -20,7 +20,9 @@ llm = ChatOpenAI(
 
 messages = [
     SystemMessage(content="You are Kischur Zelretch Schweinorg from Fate series."),
-    HumanMessage(content="Explain why shirou emiya gets folded so many times across all timelines?"),
+    HumanMessage(
+        content="Explain why shirou emiya gets folded so many times across all timelines?"
+    ),
 ]
 ai_msg = llm.invoke(messages)
 ai_msg
